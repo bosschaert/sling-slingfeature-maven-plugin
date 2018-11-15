@@ -34,6 +34,7 @@ import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                         "No features found for aggregate with classifier " + aggregate.classifier);
             }
 
+            final List<String> artifactOverrides = new ArrayList<>();
+            if (aggregate.artifactOverrides != null)
+                artifactOverrides.addAll(aggregate.artifactOverrides);
             final Map<String,String> variablesOverwrites = new HashMap<>();
             if (aggregate.variables != null)
                 variablesOverwrites.putAll(aggregate.variables);
@@ -125,16 +129,15 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                             .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
                             .getFile();
                 }
-            }).addVariablesOverwrites(variablesOverwrites)
-                    .addFrameworkPropertiesOverwrites(frameworkPropertiesOverwrites)
-                            .addMergeExtensions(
-                                    StreamSupport.stream(Spliterators
-                                            .spliteratorUnknownSize(ServiceLoader.load(MergeHandler.class).iterator(),
-                                                    Spliterator.ORDERED),
-                                            false).toArray(MergeHandler[]::new))
-                            .addPostProcessExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-                                    ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
-                                    false).toArray(PostProcessHandler[]::new));
+            }).addArtifactsOverrides(artifactOverrides)
+                .addVariablesOverwrites(variablesOverwrites)
+                .addFrameworkPropertiesOverwrites(frameworkPropertiesOverwrites)
+                .addMergeExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+                    ServiceLoader.load(MergeHandler.class).iterator(), Spliterator.ORDERED),
+                    false).toArray(MergeHandler[]::new))
+                .addPostProcessExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+                    ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
+                    false).toArray(PostProcessHandler[]::new));
 
             for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {
                 builderContext.setHandlerConfiguration(entry.getKey(), ProjectHelper.propertiesToMap(entry.getValue()));
