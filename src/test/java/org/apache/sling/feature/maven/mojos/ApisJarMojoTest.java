@@ -17,17 +17,22 @@
 package org.apache.sling.feature.maven.mojos;
 
 import org.apache.maven.project.MavenProject;
+import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.maven.Preprocessor;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ApisJarMojoTest {
     @Test
     public void testExecute() throws Exception {
         MavenProject project = Mockito.mock(MavenProject.class);
         Mockito.when(project.getContextValue(Preprocessor.class.getName())).thenReturn(new Object());
+        Map<String,Feature> fm = new HashMap<>();
+        Mockito.when(project.getContextValue("features-cache")).thenReturn(fm);
 
         FeatureSelectionConfig fsc = new FeatureSelectionConfig();
 
