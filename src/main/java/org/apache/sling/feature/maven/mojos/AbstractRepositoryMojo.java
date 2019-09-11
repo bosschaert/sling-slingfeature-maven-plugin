@@ -16,13 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Dependency;
@@ -36,6 +29,13 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
+import java.util.Map;
+
 public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMojo {
 
     /**
@@ -43,6 +43,8 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
      */
     @Parameter(defaultValue = "artifacts", property = "repositoryDir")
     String repositoryDir;
+
+    boolean decompress;
 
     @Override
     public abstract void execute() throws MojoExecutionException, MojoFailureException;
@@ -160,6 +162,7 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
                 artifactId);
 
         try {
+            System.out.println("*** uncompress: " + decompress);
             FileUtils.copyFile(source.getFile(), artifactFile);
         } catch (IOException e) {
             throw new MojoExecutionException("Unable to copy artifact from " + source.getFile(), e);

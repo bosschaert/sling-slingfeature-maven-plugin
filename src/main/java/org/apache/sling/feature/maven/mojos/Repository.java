@@ -16,10 +16,10 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import org.apache.maven.model.Dependency;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.maven.model.Dependency;
 
 public class Repository extends FeatureSelectionConfig {
 
@@ -30,6 +30,8 @@ public class Repository extends FeatureSelectionConfig {
      * build directory.
      */
     public String repositoryDir = "artifacts";
+
+    public boolean decompress = false;
 
     public void setEmbedArtifact(final Dependency dep) {
         this.embedArtifacts.add(dep);
