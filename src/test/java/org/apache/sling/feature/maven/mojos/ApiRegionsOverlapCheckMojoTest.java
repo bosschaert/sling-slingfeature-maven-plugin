@@ -17,9 +17,17 @@
 package org.apache.sling.feature.maven.mojos;
 
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.project.MavenProject;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import java.io.File;
+import java.io.FileReader;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -50,6 +58,46 @@ public class ApiRegionsOverlapCheckMojoTest {
     public void testOverlap() throws Exception {
         ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
 
-        // mojo.execute();
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testOverlap").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = Collections.singleton("foo");
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        mojo.execute();
+        fail("Expect to fail here as there is overlap");
+    }
+
+    @Test
+    public void testNoOverlap() throws Exception {
+        ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
+
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testNoOverlap").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = Collections.singleton("foo");
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        mojo.execute();
     }
 }

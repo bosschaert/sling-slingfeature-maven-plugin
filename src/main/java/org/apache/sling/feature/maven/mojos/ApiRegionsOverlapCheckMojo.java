@@ -111,9 +111,10 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
                         }
                     }
                     if (isRegionIncluded(r.getName())) {
-                        getLog().debug("API Region " + r.getName()
-                                    + " will not processed due to the configured include/exclude list");
                         regions.add(r);
+                    } else {
+                        getLog().debug("API Region " + r.getName()
+                            + " will not processed due to the configured include/exclude list"); // TODO
                     }
                 }
 
