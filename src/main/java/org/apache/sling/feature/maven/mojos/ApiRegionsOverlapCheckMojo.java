@@ -30,7 +30,6 @@ import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,14 +42,13 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
     private static final String PROPERTY_FILTER = ApisJarMojo.class.getName() + ".filter";
 
     @Parameter
-    private FeatureSelectionConfig selection;
+    FeatureSelectionConfig selection;
 
     @Parameter
-    private List<String> regions;
+    Set<String> regions;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        System.out.println("@HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH@");
         System.out.println("Selected features: " + selection);
         System.out.println("Actual features: " + getSelectedFeatures(selection));
         System.out.println("Regions: " + regions);
