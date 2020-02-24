@@ -16,18 +16,24 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import org.apache.felix.utils.manifest.Clause;
+import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.sling.feature.Artifact;
+import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.extension.apiregions.api.ApiExport;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
+import org.apache.sling.feature.maven.ProjectHelper;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 
 import javax.json.JsonArray;
 
@@ -44,6 +52,7 @@ import javax.json.JsonArray;
 @Mojo(name = "api-regions-crossfeature-duplicates",
     defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
 public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
+    private static final String GLOBAL_REGION = "global";
     private static final String PROPERTY_FILTER = ApisJarMojo.class.getName() + ".filter";
 
     @Parameter
@@ -54,10 +63,6 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        System.out.println("Selected features: " + selection);
-        System.out.println("Actual features: " + getSelectedFeatures(selection));
-        System.out.println("Regions: " + regions);
-
         if (regions == null || regions.size() == 0) {
             throw new MojoExecutionException("Please specify at least one region to check for duplicate exports");
         }
@@ -65,28 +70,50 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         Map<FeatureIDRegion, Set<String>> featureExports = new HashMap<>();
         Map<String, Feature> fs = getSelectedFeatures(selection);
         for (Map.Entry<String, Feature> f : fs.entrySet()) {
-            ApiRegions fRegions = getApiRegions(f.getValue());
-            System.out.println("Feature ID: " + f.getKey());
-            System.out.println("API Regions: " + fRegions);
+            Feature feature = f.getValue();
+            if (feature.getExtensions().getByName("api-regions") != null) {
+                // there are API regions defined
+                ApiRegions fRegions = getApiRegions(feature);
 
-            for(ApiRegion r : fRegions.listRegions()) {
-                if (!regions.contains(r.getName())) {
-                    continue;
-                }
+                for(ApiRegion r : fRegions.listRegions()) {
+                    if (!regions.contains(r.getName())) {
+                        continue;
+                    }
 
-                FeatureIDRegion mapKey = new FeatureIDRegion(f.getKey(), r.getName());
-                Set<String> el = featureExports.get(mapKey) ;
-                if (el == null) {
-                    el = new HashSet<>();
-                    featureExports.put(mapKey, el);
+                    Set<String> el = new HashSet<>();
+                    for (ApiExport ex : r.listExports()) {
+                        el.add(ex.getName());
+                    }
+                    featureExports.put(new FeatureIDRegion(f.getKey(), r.getName()), el);
                 }
-                for (ApiExport ex : r.listExports()) {
-                    el.add(ex.getName());
+            } else {
+                // no API regions defined, get the exports from all the bundles and record them for the global region
+                for (Artifact bundle : feature.getBundles()) {
+                    ArtifactId bid = bundle.getId();
+                    org.apache.maven.artifact.Artifact art = ProjectHelper.getOrResolveArtifact(
+                            project, mavenSession, artifactHandlerManager, artifactResolver, bid);
+                    File bundleJar = art.getFile();
+                    try (JarFile jf = new JarFile(bundleJar)) {
+                        Manifest mf = jf.getManifest();
+                        if (mf != null) {
+                            String epHeader = mf.getMainAttributes().getValue("Export-Package");
+                            if (epHeader != null) {
+                                Clause[] clauses = Parser.parseHeader(epHeader);
+                                Set<String> exports = new HashSet<>();
+                                for (Clause c : clauses) {
+                                    exports.add(c.getName());
+                                }
+                                featureExports.put(new FeatureIDRegion(f.getKey(), GLOBAL_REGION), exports);
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new MojoExecutionException(e.getMessage(), e);
+                    }
                 }
             }
         }
 
-        if (fs.size() < 2) {
+        if (featureExports.size() < 2) {
             // Not 2 or more features, so no overlap to check
             return;
         }

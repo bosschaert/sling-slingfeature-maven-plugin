@@ -2,7 +2,7 @@
   "id":"testing:test:slingfeature:testb:1.0.1",
   "api-regions:JSON|false":[
     {
-      "name":"foo",
+      "name":"internal",
       "exports":[
           "ding.dong"
       ]
