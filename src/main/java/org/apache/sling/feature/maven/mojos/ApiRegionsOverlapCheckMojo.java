@@ -88,6 +88,7 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
                 }
             } else {
                 // no API regions defined, get the exports from all the bundles and record them for the global region
+                Set<String> exports = new HashSet<>();
                 for (Artifact bundle : feature.getBundles()) {
                     ArtifactId bid = bundle.getId();
                     org.apache.maven.artifact.Artifact art = ProjectHelper.getOrResolveArtifact(
@@ -99,17 +100,16 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
                             String epHeader = mf.getMainAttributes().getValue("Export-Package");
                             if (epHeader != null) {
                                 Clause[] clauses = Parser.parseHeader(epHeader);
-                                Set<String> exports = new HashSet<>();
                                 for (Clause c : clauses) {
                                     exports.add(c.getName());
                                 }
-                                featureExports.put(new FeatureIDRegion(f.getKey(), GLOBAL_REGION), exports);
                             }
                         }
                     } catch (IOException e) {
                         throw new MojoExecutionException(e.getMessage(), e);
                     }
                 }
+                featureExports.put(new FeatureIDRegion(f.getKey(), GLOBAL_REGION), exports);
             }
         }
 

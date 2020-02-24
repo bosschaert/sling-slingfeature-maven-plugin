@@ -121,6 +121,10 @@ public class ApiRegionsOverlapCheckMojoTest {
                     art.setFile(new File(getClass().
                             getResource("/bundles/feature-export.jar").getFile()));
                 }
+                if ("feature-exports2".equals(art.getArtifactId())) {
+                    art.setFile(new File(getClass().
+                            getResource("/bundles/feature-export2.jar").getFile()));
+                }
                 return null;
             }
 
