@@ -36,7 +36,6 @@ import org.apache.sling.feature.maven.ProjectHelper;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -53,7 +52,6 @@ import javax.json.JsonArray;
     defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
 public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
     private static final String GLOBAL_REGION = "global";
-    private static final String PROPERTY_FILTER = ApisJarMojo.class.getName() + ".filter";
 
     @Parameter
     FeatureSelectionConfig selection;
@@ -71,9 +69,9 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         Map<String, Feature> fs = getSelectedFeatures(selection);
         for (Map.Entry<String, Feature> f : fs.entrySet()) {
             Feature feature = f.getValue();
-            if (feature.getExtensions().getByName("api-regions") != null) {
+            ApiRegions fRegions = getApiRegions(feature);
+            if (fRegions != null) {
                 // there are API regions defined
-                ApiRegions fRegions = getApiRegions(feature);
 
                 for(ApiRegion r : fRegions.listRegions()) {
                     if (!regions.contains(r.getName())) {
@@ -153,118 +151,29 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         return true;
     }
 
-    // All the stuff below here is copied from the ApisJarMojo - need to refactor and share TODO
-    // TODO ?
-    private boolean incrementalApis = false;
-    private Set<String> includeRegions = Collections.singleton("*");
-    private Set<String> excludeRegions = Collections.emptySet();
-
-    // Copied from ApisJarMojo TODO
     /**
-     * Get the api regions for a feature If the feature does not have an api region
-     * an artificial global region is returned.
+     * Get the api regions for a feature.
      *
      * @param feature The feature
-     * @return The api regions or {@code null} if the feature is wrongly configured
-     *         or all regions are excluded
+     * @return The api regions or {@code null} if the feature is not using API Regions
      * @throws MojoExecutionException If an error occurs
      */
     private ApiRegions getApiRegions(final Feature feature) throws MojoExecutionException {
-        ApiRegions regions = new ApiRegions();
-
         Extensions extensions = feature.getExtensions();
         Extension apiRegionsExtension = extensions.getByName(ApiRegions.EXTENSION_NAME);
         if (apiRegionsExtension != null) {
-            if (apiRegionsExtension.getJSONStructure() == null) {
-                getLog().info(
-                        "Feature file " + feature.getId().toMvnId() + " declares an empty '" + ApiRegions.EXTENSION_NAME
-                    + "' extension, no API JAR will be created");
-                regions = null;
-            } else {
-                ApiRegions sourceRegions;
+            ApiRegions regions = new ApiRegions();
+            if (apiRegionsExtension.getJSONStructure() != null) {
                 try {
-                    sourceRegions = ApiRegions
-                            .parse((JsonArray) apiRegionsExtension.getJSONStructure());
+                    regions = ApiRegions.parse((JsonArray) apiRegionsExtension.getJSONStructure());
                 } catch (final IOException ioe) {
                     throw new MojoExecutionException(ioe.getMessage(), ioe);
                 }
-
-                // calculate all api-regions first, taking the inheritance in account
-                for (final ApiRegion r : sourceRegions.listRegions()) {
-                    if (r.getParent() != null && !this.incrementalApis) {
-                        for (final ApiExport exp : r.getParent().listExports()) {
-                            r.add(exp);
-                        }
-                    }
-                    if (isRegionIncluded(r.getName())) {
-                        regions.add(r);
-                    } else {
-                        getLog().debug("API Region " + r.getName()
-                            + " will not processed due to the configured include/exclude list"); // TODO
-                    }
-                }
-
-                // prepare filter
-                for (final ApiRegion r : regions.listRegions()) {
-                    for (final ApiExport e : r.listExports()) {
-                        e.getProperties().put(PROPERTY_FILTER, packageToScannerFiler(e.getName(), true));
-                    }
-                }
-
-                if (regions.isEmpty()) {
-                    getLog().info("Feature file " + feature.getId().toMvnId()
-                            + " has no included api regions, no API JAR will be created");
-                    regions = null;
-                }
             }
+            return regions;
         } else {
-            // create exports on the fly
-            regions.add(new ApiRegion(ApiRegion.GLOBAL) {
-
-                @Override
-                public ApiExport getExportByName(final String name) {
-                    ApiExport exp = super.getExportByName(name);
-                    if (exp == null) {
-                        exp = new ApiExport(name);
-                        this.add(exp);
-                    }
-                    return exp;
-                }
-            });
+            return null;
         }
-
-        return regions;
-    }
-
-    // TODO copied from ApisJarMojo
-    /**
-     * Check if the region is included
-     *
-     * @param name The region name
-     * @return {@code true} if the region is included
-     */
-    private boolean isRegionIncluded(final String name) {
-        boolean included = false;
-        for (final String i : this.includeRegions) {
-            if ("*".equals(i) || i.equals(name)) {
-                included = true;
-                break;
-            }
-        }
-        if (included && this.excludeRegions != null) {
-            for (final String e : this.excludeRegions) {
-                if (name.equals(e)) {
-                    included = false;
-                    break;
-                }
-            }
-        }
-
-        return included;
-    }
-
-    private static String packageToScannerFiler(String api, boolean strict) {
-        return (strict ? "*": "**") + '/' + api.replace('.', '/') + "/*";
     }
 
     private static class FeatureIDRegion {
@@ -274,14 +183,6 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         private FeatureIDRegion(String featureID, String region) {
             this.featureID = featureID;
             this.region = region;
-        }
-
-        private String getFeatureID() {
-            return featureID;
-        }
-
-        private String getRegion() {
-            return region;
         }
 
         @Override
