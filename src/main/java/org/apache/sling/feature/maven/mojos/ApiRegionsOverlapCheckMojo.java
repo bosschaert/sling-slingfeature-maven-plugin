@@ -29,8 +29,13 @@ import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.json.JsonArray;
@@ -57,14 +62,68 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
             throw new MojoExecutionException("Please specify at least one region to check for duplicate exports");
         }
 
-
-//        List<String>
+        Map<FeatureIDRegion, Set<String>> featureExports = new HashMap<>();
         Map<String, Feature> fs = getSelectedFeatures(selection);
         for (Map.Entry<String, Feature> f : fs.entrySet()) {
-            ApiRegions reg = getApiRegions(f.getValue());
+            ApiRegions fRegions = getApiRegions(f.getValue());
             System.out.println("Feature ID: " + f.getKey());
-            System.out.println("API Regions: " + reg);
+            System.out.println("API Regions: " + fRegions);
+
+            for(ApiRegion r : fRegions.listRegions()) {
+                if (!regions.contains(r.getName())) {
+                    continue;
+                }
+
+                FeatureIDRegion mapKey = new FeatureIDRegion(f.getKey(), r.getName());
+                Set<String> el = featureExports.get(mapKey) ;
+                if (el == null) {
+                    el = new HashSet<>();
+                    featureExports.put(mapKey, el);
+                }
+                for (ApiExport ex : r.listExports()) {
+                    el.add(ex.getName());
+                }
+            }
         }
+
+        if (fs.size() < 2) {
+            // Not 2 or more features, so no overlap to check
+            return;
+        }
+
+        boolean overlapFound = false;
+        List<FeatureIDRegion> keyList = new ArrayList<>(featureExports.keySet());
+        for (int i=0; i<keyList.size(); i++) {
+            FeatureIDRegion key1 = keyList.get(i);
+            for (int j=i+1; j<keyList.size(); j++) {
+                FeatureIDRegion key2 = keyList.get(j);
+                Set<String> exp1 = featureExports.get(key1);
+                Set<String> exp2 = featureExports.get(key2);
+                overlapFound |= checkOverlap(key1, exp1, key2, exp2);
+            }
+        }
+
+        if (overlapFound) {
+            throw new MojoExecutionException("Errors found, see log");
+        }
+    }
+
+    private boolean checkOverlap(FeatureIDRegion key1, Set<String> exp1, FeatureIDRegion key2, Set<String> exp2) {
+        if (key1.equals(key2)) {
+            // Don't compare a region with itself
+            return false;
+        }
+
+        Set<String> s = new HashSet<>(exp1);
+
+        s.retainAll(exp2);
+        if (s.size() == 0) {
+            // no overlap
+            return false;
+        }
+
+        getLog().error("Overlap found between " + key1 + " and " + key2 + ". Both export: " + s);
+        return true;
     }
 
     // All the stuff below here is copied from the ApisJarMojo - need to refactor and share TODO
@@ -181,4 +240,43 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         return (strict ? "*": "**") + '/' + api.replace('.', '/') + "/*";
     }
 
+    private static class FeatureIDRegion {
+        private final String featureID;
+        private final String region;
+
+        private FeatureIDRegion(String featureID, String region) {
+            this.featureID = featureID;
+            this.region = region;
+        }
+
+        private String getFeatureID() {
+            return featureID;
+        }
+
+        private String getRegion() {
+            return region;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(featureID, region);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            FeatureIDRegion other = (FeatureIDRegion) obj;
+            return Objects.equals(featureID, other.featureID) && Objects.equals(region, other.region);
+        }
+
+        @Override
+        public String toString() {
+            return "Feature: " + featureID + ", Region: " + region;
+        }
+    }
 }

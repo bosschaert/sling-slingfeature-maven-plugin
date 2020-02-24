@@ -74,8 +74,12 @@ public class ApiRegionsOverlapCheckMojoTest {
         cfg.setFilesInclude("*.json");
         mojo.selection = cfg;
 
-        mojo.execute();
-        fail("Expect to fail here as there is overlap");
+        try {
+            mojo.execute();
+            fail("Expect to fail here as there is overlap");
+        } catch (MojoExecutionException mee) {
+            assertTrue(mee.getMessage().contains("Errors found"));
+        }
     }
 
     @Test
