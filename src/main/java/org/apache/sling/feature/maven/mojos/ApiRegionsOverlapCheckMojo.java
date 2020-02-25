@@ -78,16 +78,10 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
     Set<String> regions;
 
     /**
-     * Packages to ignore in the comparison
+     * Special package instructions
      */
     @Parameter
-    Set<String> ignores;
-
-    /**
-     * If packages in the warning set are found to overlap, this will produce a warning rather than an error
-     */
-    @Parameter
-    Set<String> warnings;
+    NoErrorPackageConfig packages;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -181,21 +175,20 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
 
         s.retainAll(exp2);
 
-        // Remove all ignored packages
-        if (ignores != null) {
-            s.removeAll(ignores);
-        }
+        if (packages != null) {
+            // Remove all ignored packages
+            s.removeAll(packages.ignored);
 
-        if (warnings != null) {
-            Set<String> ws = new HashSet<>(s);
-            ws.retainAll(warnings);
-            s.removeAll(warnings);
+            if (packages.warnings.size() > 0) {
+                Set<String> ws = new HashSet<>(s);
+                ws.retainAll(packages.warnings);
+                s.removeAll(packages.warnings);
 
-            if (ws.size() > 0) {
-                getLog().warn(msgPrefix + ws);
+                if (ws.size() > 0) {
+                    getLog().warn(msgPrefix + ws);
+                }
             }
         }
-
 
         if (s.size() == 0) {
             // no overlap
@@ -261,6 +254,19 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         @Override
         public String toString() {
             return "Feature: " + featureID + ", Region: " + region;
+        }
+    }
+
+    public static class NoErrorPackageConfig {
+        Set<String> ignored = new HashSet<>();
+        Set<String> warnings = new HashSet<>();
+
+        public void setIgnore(String pkg) {
+            ignored.add(pkg);
+        }
+
+        public void setWarning(String pkg) {
+            warnings.add(pkg);
         }
     }
 }

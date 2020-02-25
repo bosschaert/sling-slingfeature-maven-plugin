@@ -81,8 +81,9 @@ public class ApiRegionsOverlapCheckMojoTest {
             .thenReturn(featureMap);
 
         mojo.regions = Collections.singleton("foo");
-        mojo.ignores = Collections.emptySet();
-        mojo.warnings = Collections.emptySet();
+        mojo.packages = new ApiRegionsOverlapCheckMojo.NoErrorPackageConfig();
+        mojo.packages.ignored = Collections.emptySet();
+        mojo.packages.warnings = Collections.emptySet();
         FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setFilesInclude("*.json");
         mojo.selection = cfg;
@@ -165,8 +166,9 @@ public class ApiRegionsOverlapCheckMojoTest {
             .thenReturn(featureMap);
 
         mojo.regions = new HashSet<>(Arrays.asList("bar", "foo"));
-        mojo.ignores = Collections.emptySet();
-        mojo.warnings = Collections.emptySet();
+        mojo.packages = new ApiRegionsOverlapCheckMojo.NoErrorPackageConfig();
+        mojo.packages.ignored = Collections.emptySet();
+        mojo.packages.warnings = Collections.emptySet();
         FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setFilesInclude("*.json");
         mojo.selection = cfg;
@@ -317,7 +319,8 @@ public class ApiRegionsOverlapCheckMojoTest {
             .thenReturn(featureMap);
 
         mojo.regions = Collections.singleton("foo");
-        mojo.ignores = Collections.singleton("ding.dong");
+        mojo.packages = new ApiRegionsOverlapCheckMojo.NoErrorPackageConfig();
+        mojo.packages.ignored = Collections.singleton("ding.dong");
         FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setFilesInclude("*.json");
         mojo.selection = cfg;
@@ -342,7 +345,8 @@ public class ApiRegionsOverlapCheckMojoTest {
             .thenReturn(featureMap);
 
         mojo.regions = Collections.singleton("foo");
-        mojo.warnings = Collections.singleton("ding.dong");
+        mojo.packages = new ApiRegionsOverlapCheckMojo.NoErrorPackageConfig();
+        mojo.packages.warnings = Collections.singleton("ding.dong");
         FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setFilesInclude("*.json");
         mojo.selection = cfg;
