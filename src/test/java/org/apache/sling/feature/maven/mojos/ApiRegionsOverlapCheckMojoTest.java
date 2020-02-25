@@ -81,6 +81,8 @@ public class ApiRegionsOverlapCheckMojoTest {
             .thenReturn(featureMap);
 
         mojo.regions = Collections.singleton("foo");
+        mojo.ignores = Collections.emptySet();
+        mojo.warnings = Collections.emptySet();
         FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setFilesInclude("*.json");
         mojo.selection = cfg;
@@ -242,6 +244,56 @@ public class ApiRegionsOverlapCheckMojoTest {
         mojo.selection = cfg;
 
         // Should not cause an exception as there is no overlap
+        mojo.execute();
+    }
+
+    @Test
+    public void testOverlapIgnore() throws Exception {
+        ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
+
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testOverlap").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = Collections.singleton("foo");
+        mojo.ignores = Collections.singleton("ding.dong");
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        // There is overlap with the ding.dong package, but it's configured as 'ignore', so the build should not fail
+        mojo.execute();
+    }
+
+    @Test
+    public void testOverlapWarning() throws Exception {
+        ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
+
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testOverlap").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = Collections.singleton("foo");
+        mojo.warnings = Collections.singleton("ding.dong");
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        // There is overlap with the ding.dong package, but it's configured as 'ignore', so the build should not fail
         mojo.execute();
     }
 }

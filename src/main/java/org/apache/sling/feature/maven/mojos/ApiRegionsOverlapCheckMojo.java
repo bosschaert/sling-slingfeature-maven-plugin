@@ -48,6 +48,21 @@ import java.util.jar.Manifest;
 import javax.json.JsonArray;
 
 
+/**
+ * This mojo compares multiple feature models and checks if there is overlap between exports from these
+ * feature models. It will fail the Maven execution if there is. <p>
+ *
+ * It can be used to detect if a feature model provides packages that are already provided as part of
+ * some platform and report an error if there is such a case. <p>
+ *
+ * It does this by looking at the exports of the api-regions extension in the feature model and collecting
+ * the packages listed there. If a feature model does not opt-in to the api-regions extension, all bundles
+ * listed as part of that feature are examined for exported packages and these are added to the global
+ * region. <p>
+ *
+ * If multiple features export the same package in any listed API region then the mojo will cause the build
+ * to fail.
+ */
 @Mojo(name = "api-regions-crossfeature-duplicates",
     defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
 public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
@@ -56,8 +71,23 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     FeatureSelectionConfig selection;
 
+    /**
+     * The regions to check for overlapping exports
+     */
     @Parameter
     Set<String> regions;
+
+    /**
+     * Packages to ignore in the comparison
+     */
+    @Parameter
+    Set<String> ignores;
+
+    /**
+     * If packages in the warning set are found to overlap, this will produce a warning rather than an error
+     */
+    @Parameter
+    Set<String> warnings;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -134,6 +164,8 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
     }
 
     private boolean checkOverlap(FeatureIDRegion key1, Set<String> exp1, FeatureIDRegion key2, Set<String> exp2) {
+        String msgPrefix = "Overlap found between " + key1 + " and " + key2 + ". Both export: ";
+
         if (key1.equals(key2)) {
             // Don't compare a region with itself
             return false;
@@ -142,12 +174,30 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
         Set<String> s = new HashSet<>(exp1);
 
         s.retainAll(exp2);
+
+        // Remove all ignored packages
+        if (ignores != null) {
+            s.removeAll(ignores);
+        }
+
+        if (warnings != null) {
+            Set<String> ws = new HashSet<>(s);
+            ws.retainAll(warnings);
+            s.removeAll(warnings);
+
+            if (ws.size() > 0) {
+                getLog().warn(msgPrefix + ws);
+            }
+        }
+
+
         if (s.size() == 0) {
             // no overlap
             return false;
         }
 
-        getLog().error("Overlap found between " + key1 + " and " + key2 + ". Both export: " + s);
+
+        getLog().error(msgPrefix + s);
         return true;
     }
 
