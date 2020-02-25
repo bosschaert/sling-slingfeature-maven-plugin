@@ -150,6 +150,60 @@ public class ApiRegionsOverlapCheckMojoTest {
     }
 
     @Test
+    public void testOverlap3() throws Exception {
+        ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
+
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testOverlap3").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = new HashSet<>(Arrays.asList("bar", "foo"));
+        mojo.ignores = Collections.emptySet();
+        mojo.warnings = Collections.emptySet();
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        try {
+            mojo.execute();
+            fail("Expect to fail here as there is overlap");
+        } catch (MojoExecutionException mee) {
+            assertTrue(mee.getMessage().contains("Errors found"));
+        }
+    }
+
+    @Test
+    public void testNotEnoughFeatureModels() throws Exception {
+        ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
+
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testNotEnoughFeatureModels").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = Collections.singleton("foo");
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        // There is only one feature model, so this should not fail (but produce a warning)
+        mojo.execute();
+    }
+
+    @Test
     public void testNoOverlap() throws Exception {
         ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
 

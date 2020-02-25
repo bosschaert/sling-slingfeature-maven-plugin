@@ -49,8 +49,8 @@ import javax.json.JsonArray;
 
 
 /**
- * This mojo compares multiple feature models and checks if there is overlap between exports from these
- * feature models. It will fail the Maven execution if there is. <p>
+ * This mojo compares multiple feature models and checks if there is overlap between exported packages from
+ * these feature models. It will fail the Maven execution if there is. <p>
  *
  * It can be used to detect if a feature model provides packages that are already provided as part of
  * some platform and report an error if there is such a case. <p>
@@ -97,6 +97,12 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
 
         Map<FeatureIDRegion, Set<String>> featureExports = new HashMap<>();
         Map<String, Feature> fs = getSelectedFeatures(selection);
+
+        if (fs.size() < 2) {
+            getLog().warn("Comparing feature models for overlapping exports is only useful for 2 ore more features. "
+                    + "Number of feature models selected: " + fs.size());
+        }
+
         for (Map.Entry<String, Feature> f : fs.entrySet()) {
             Feature feature = f.getValue();
             ApiRegions fRegions = getApiRegions(feature);
