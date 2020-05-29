@@ -16,6 +16,7 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -23,9 +24,14 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Feature;
 
+import java.io.StringReader;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+
+import javax.json.Json;
+import javax.json.JsonValue;
 
 @Mojo(name = "compare-features")
 public class CompareFeaturesMojo extends AbstractIncludingFeatureMojo {
@@ -91,6 +97,27 @@ public class CompareFeaturesMojo extends AbstractIncludingFeatureMojo {
                     throw new MojoExecutionException("Artifacts are not the same: " + extGold
                             + " and " + extComp);
                 break;
+            case TEXT:
+                if (!Objects.equals(extGold.getText(), extComp.getText()))
+                    throw new MojoExecutionException("Text is not the same: " + extGold
+                            + " and " + extComp);
+                break;
+            case JSON:
+                String goldJSON = extGold.getJSON();
+                String compJSON = extComp.getJSON();
+                if (goldJSON == null && compJSON == null) {
+                    break;
+                }
+                if (goldJSON == null || compJSON == null) {
+                    throw new MojoExecutionException("JSON not specified in both extensions: " + extGold
+                            + " and " + extComp);
+                }
+                JsonValue goldVal = Json.createParser(new StringReader(goldJSON)).getValue();
+                JsonValue compVal = Json.createParser(new StringReader(compJSON)).getValue();
+                if (!goldVal.equals(compVal)) {
+                    throw new MojoExecutionException("JSON is different between: " + extGold
+                            + " and " + extComp);
+                }
             }
         }
     }
