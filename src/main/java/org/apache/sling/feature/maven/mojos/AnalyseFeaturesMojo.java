@@ -16,18 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -43,6 +31,18 @@ import org.apache.sling.feature.analyser.AnalyserResult;
 import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Analyse the feature.
@@ -103,6 +103,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             try {
                 Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
                 addTaskConfigurationDefaults(taskConfiguration);
+                Map<String, Object> context = getAnalyserContext(taskConfiguration);
 
                 getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("analyser")
                         .a(" with following configuration:").toString());
@@ -145,7 +146,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                         if (fwk == null) {
                             fwk = this.framework;
                         }
-                        final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk));
+                        final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), context);
                         for (final String msg : result.getWarnings()) {
                             getLog().warn(msg);
                         }
@@ -178,6 +179,34 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             throw new MojoFailureException(
                     "One or more feature analyzer(s) detected feature error(s), please read the plugin log for more details");
         }
+    }
+
+    private Map<String, Object> getAnalyserContext(Map<String, Map<String, String>> taskConfiguration) {
+        Map<String, Object> ctx = new HashMap<>();
+
+        for (Map.Entry<String, Map<String, String>> cfg : taskConfiguration.entrySet()) {
+            for (Map.Entry<String, String> entry : cfg.getValue().entrySet()) {
+                if (entry.getValue().startsWith("@")) {
+
+                    FeatureSelectionConfig fsc = new FeatureSelectionConfig();
+                    fsc.setIncludeClassifier(entry.getValue().substring(1));
+                    // Expand referenced feature models
+                    try {
+                        Map<String, Feature> selected = getSelectedFeatures(fsc);
+                        if (selected.size() > 0) {
+                            ctx.put(cfg.getKey() + "/" + entry.getKey(), selected.values().iterator().next());
+                        }
+                        ctx.putAll(selected);
+                    } catch (MojoExecutionException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+
+        return ctx;
     }
 
     void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
