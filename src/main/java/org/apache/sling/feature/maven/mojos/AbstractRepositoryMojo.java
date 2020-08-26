@@ -16,13 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Dependency;
@@ -36,6 +29,13 @@ import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMojo {
 
@@ -112,41 +112,6 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
                 processFeature(artifactDir, prototype);
             }
         }
-    }
-
-    /**
-     * Get the file in the repository directory
-     * @param artifactDir The base artifact directory
-     * @param artifact The artifact
-     * @return The file
-     */
-    private File getRepositoryFile(final File artifactDir, final org.apache.sling.feature.ArtifactId artifact) {
-        final StringBuilder artifactNameBuilder = new StringBuilder();
-        artifactNameBuilder.append(artifact.getArtifactId());
-        artifactNameBuilder.append('-');
-        artifactNameBuilder.append(artifact.getVersion());
-        if ( artifact.getClassifier() != null ) {
-            artifactNameBuilder.append('-');
-            artifactNameBuilder.append(artifact.getClassifier());
-        }
-        artifactNameBuilder.append('.');
-        artifactNameBuilder.append(artifact.getType());
-        final String artifactName = artifactNameBuilder.toString();
-
-        final StringBuilder sb = new StringBuilder();
-        sb.append(artifact.getGroupId().replace('.', File.separatorChar));
-        sb.append(File.separatorChar);
-        sb.append(artifact.getArtifactId());
-        sb.append(File.separatorChar);
-        sb.append(artifact.getVersion());
-        sb.append(File.separatorChar);
-        sb.append(artifactName);
-        final String destPath = sb.toString();
-
-        final File artifactFile = new File(artifactDir, destPath);
-        artifactFile.getParentFile().mkdirs();
-
-        return artifactFile;
     }
 
     /**

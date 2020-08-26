@@ -16,14 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
@@ -43,6 +35,14 @@ import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.FeatureProjectConfig;
 import org.apache.sling.feature.maven.ProjectHelper;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Base class for all mojos.
@@ -306,6 +306,41 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
             .setArtifactProvider(new BaseArtifactProvider());
 
         return builderContext;
+    }
+
+    /**
+     * Get the file in the repository directory
+     * @param artifactDir The base artifact directory
+     * @param artifact The artifact
+     * @return The file
+     */
+    File getRepositoryFile(final File artifactDir, final org.apache.sling.feature.ArtifactId artifact) {
+        final StringBuilder artifactNameBuilder = new StringBuilder();
+        artifactNameBuilder.append(artifact.getArtifactId());
+        artifactNameBuilder.append('-');
+        artifactNameBuilder.append(artifact.getVersion());
+        if ( artifact.getClassifier() != null ) {
+            artifactNameBuilder.append('-');
+            artifactNameBuilder.append(artifact.getClassifier());
+        }
+        artifactNameBuilder.append('.');
+        artifactNameBuilder.append(artifact.getType());
+        final String artifactName = artifactNameBuilder.toString();
+
+        final StringBuilder sb = new StringBuilder();
+        sb.append(artifact.getGroupId().replace('.', File.separatorChar));
+        sb.append(File.separatorChar);
+        sb.append(artifact.getArtifactId());
+        sb.append(File.separatorChar);
+        sb.append(artifact.getVersion());
+        sb.append(File.separatorChar);
+        sb.append(artifactName);
+        final String destPath = sb.toString();
+
+        final File artifactFile = new File(artifactDir, destPath);
+        artifactFile.getParentFile().mkdirs();
+
+        return artifactFile;
     }
 
     protected class BaseFeatureProvider implements FeatureProvider {

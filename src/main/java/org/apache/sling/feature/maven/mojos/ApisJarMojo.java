@@ -16,33 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
-import java.util.jar.Manifest;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import javax.json.JsonArray;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
@@ -84,6 +57,8 @@ import org.apache.sling.feature.extension.apiregions.api.ApiExport;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
+import org.apache.sling.feature.maven.JSONFeatures;
+import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.ApisUtil;
@@ -97,6 +72,33 @@ import org.codehaus.plexus.archiver.util.DefaultFileSet;
 import org.codehaus.plexus.components.io.fileselectors.FileSelector;
 import org.codehaus.plexus.components.io.fileselectors.IncludeExcludeFileSelector;
 import org.osgi.framework.Constants;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import javax.json.JsonArray;
 
 /**
  * Generates the APIs JARs for the selected feature files.
@@ -381,6 +383,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
+    @Parameter
+    private String includeFeaturesDir;
+
     @Component(hint = "default")
     private ModelBuilder modelBuilder;
 
@@ -511,6 +516,50 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return regions;
     }
 
+    private void includeFeatureFiles(Feature f, ApisJarContext ctx) throws MojoExecutionException {
+        if (this.apiResources == null)
+            this.apiResources = new ArrayList<>();
+
+        /* */
+        File outputDir = new File(ctx.getDeflatedBinDir(), "FEAT-INF");
+        this.apiResources.add(outputDir);
+        outputDir = new File(outputDir, includeFeaturesDir);
+        /* */
+
+        Set<ArtifactId> includedFeatureIDs = new HashSet<>();
+        writeFeature(outputDir, f);
+
+        ApiRegions apiRegions = ctx.getApiRegions();
+        if (apiRegions != null) {
+            for (ApiRegion apiRegion : apiRegions.listRegions()) {
+                if (!isRegionIncluded(apiRegion.getName()))
+                    continue;
+
+                includedFeatureIDs.addAll(Arrays.asList(apiRegion.getFeatureOrigins()));
+            }
+        }
+
+        for (ArtifactId id : includedFeatureIDs) {
+            Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
+                    this.artifactHandlerManager, this.artifactResolver, id);
+            writeFeature(outputDir, feature);
+        }
+    }
+
+    private void writeFeature(File outputDir, Feature f) throws MojoExecutionException {
+        File featureFile = getRepositoryFile(outputDir, f.getId());
+        if (featureFile.isFile())
+            return; // It's already there, don't write it again
+
+        featureFile.getParentFile().mkdirs();
+
+        try (Writer writer = new FileWriter(featureFile)) {
+            JSONFeatures.write(writer, f);
+        } catch (IOException ioe) {
+            throw new MojoExecutionException("Problem writing feature file " + featureFile, ioe);
+        }
+    }
+
     /**
      * Create api jars for a feature
      */
@@ -546,6 +595,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         ctx.getConfig().logConfiguration(getLog());
 
         ctx.setDependencyRepositories(this.apiRepositoryUrls);
+
+        if (includeFeaturesDir != null && includeFeaturesDir.length() > 0)
+            includeFeatureFiles(feature, ctx);
 
         // for each bundle included in the feature file and record directories
         for (final Artifact artifact : feature.getBundles()) {
