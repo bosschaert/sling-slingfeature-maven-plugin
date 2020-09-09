@@ -16,16 +16,16 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.maven.model.Dependency;
 import org.apache.sling.feature.maven.ProjectHelper;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class FeatureSelectionConfig {
 
     enum SelectionType {
-        FILES_INCLUDE, CLASSIFIER, ARTIFACT, REFS_INCLUDE
+        FILES_INCLUDE, CLASSIFIER, ARTIFACT, REFS_INCLUDE, URL
     }
 
     static class Selection {
@@ -65,6 +65,11 @@ public class FeatureSelectionConfig {
      */
     public void setRefsInclude(final String val) {
         selections.add(new Selection(SelectionType.REFS_INCLUDE, val));
+    }
+
+    public void setUrlsInclude(final String url) {
+        System.out.println("**** including " + url);
+        selections.add(new Selection(SelectionType.URL, url));
     }
 
     public void setIncludeArtifact(final Dependency a) {

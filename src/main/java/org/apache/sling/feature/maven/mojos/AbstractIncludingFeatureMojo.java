@@ -16,22 +16,26 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.shared.utils.io.DirectoryScanner;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.IOUtils;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.ProjectHelper;
+import org.codehaus.plexus.util.AbstractScanner;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
-
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.shared.utils.io.DirectoryScanner;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.IOUtils;
-import org.apache.sling.feature.maven.ProjectHelper;
-import org.codehaus.plexus.util.AbstractScanner;
 
 import edu.emory.mathcs.backport.java.util.Arrays;
 import edu.emory.mathcs.backport.java.util.Collections;
@@ -64,6 +68,9 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 break;
             case REFS_INCLUDE:
                 selectRefsFiles(selection.instruction, config.getFilesExcludes(), result);
+                break;
+            case URL:
+                selectURLFile(selection.instruction, result);
                 break;
             default:
                 break;
@@ -219,6 +226,20 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             } catch (final IOException e) {
                 throw new MojoExecutionException(e.getMessage(), e);
             }
+        }
+    }
+
+    private void selectURLFile(final String selection, final Map<String, Feature> result)
+            throws MojoExecutionException {
+        try {
+            URL url = new URL(selection);
+
+            try (InputStream is = url.openStream()) {
+                final Feature f = FeatureJSONReader.read(new InputStreamReader(is), selection);
+                result.put(f.getId().toMvnUrl(), f);;
+            }
+        } catch (final IOException e) {
+            throw new MojoExecutionException(e.getMessage(), e);
         }
     }
 

@@ -58,7 +58,6 @@ import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.JSONFeatures;
-import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.ApisUtil;
@@ -526,6 +525,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         outputDir = new File(outputDir, includeFeaturesDir);
         /* */
 
+        /*
         Set<ArtifactId> includedFeatureIDs = new HashSet<>();
         writeFeature(outputDir, f);
 
@@ -544,10 +544,68 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     this.artifactHandlerManager, this.artifactResolver, id);
             writeFeature(outputDir, feature);
         }
+        */
+
+//        Feature f2 = new Feature(ArtifactId.fromMvnId("com.adobe.aem:aem:" + f.getId().getVersion());
+        ArtifactId id = new ArtifactId("com.adobe.aem", "aem", f.getId().getVersion(), "feature", "slingosgifeature");
+        Feature f2 = f.copy(id);
+
+        // Remove extensions
+        String [] removeExtensions = {"assembled-features", "apis-jar-config"};
+        for (String ext : removeExtensions) {
+            Extension extension = f2.getExtensions().getByName(ext);
+            if (extension != null) {
+                f2.getExtensions().remove(extension);
+            }
+        }
+
+        // API Regions
+//        apiRegions = f2.getExtensions().getByName("api-regions"); 
+
+        ApiRegions apiRegions = ctx.getApiRegions();
+        ApiRegions nar = new ApiRegions();
+
+        for (String region : new String[]{"global", "com.adobe.aem.deprecated"}) {
+            ApiRegion ar = apiRegions.getRegionByName(region);
+            if (ar == null)
+                continue;
+
+            ApiRegion gar = copyRegionNoMetadata(ar);
+            nar.add(gar);
+        }
+        Extension arext = f2.getExtensions().getByName("api-regions");
+        try {
+            arext.setJSON(nar.toJSON());
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        for (Artifact b : f2.getBundles()) {
+            b.getMetadata().remove("feature-origins");
+        }
+        writeFeature(outputDir, f2);
+
+        //        f2.getExtensions().
+
+        // Remove internal region
+        // Remove feature-origins from api-regions
+        // Remove feature-origins from bundles
+    }
+
+    private ApiRegion copyRegionNoMetadata(ApiRegion region) {
+        ApiRegion ar = new ApiRegion(region.getName());
+
+        Collection<ApiExport> exports = region.listExports();
+        exports.stream().forEach(ar::add);
+
+        return ar;
     }
 
     private void writeFeature(File outputDir, Feature f) throws MojoExecutionException {
-        File featureFile = getRepositoryFile(outputDir, f.getId());
+        String featureFilename = getRepositoryFile(outputDir, f.getId()).getName();
+        File featureFile = new File(outputDir, featureFilename);
+//        File featureFile = getRepositoryFile(outputDir, f.getId());
         if (featureFile.isFile())
             return; // It's already there, don't write it again
 
