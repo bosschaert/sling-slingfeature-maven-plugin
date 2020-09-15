@@ -236,7 +236,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
             try (InputStream is = url.openStream()) {
                 final Feature f = FeatureJSONReader.read(new InputStreamReader(is), selection);
-                result.put(f.getId().toMvnUrl(), f);;
+                result.put(f.getId().toMvnUrl(), f);
             }
         } catch (final IOException e) {
             throw new MojoExecutionException(e.getMessage(), e);
